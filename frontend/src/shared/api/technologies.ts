@@ -40,3 +40,25 @@ export const createTechnology = async (data: {
 
   return response.json();
 };
+
+export const updateTechnology = async (
+  id: number,
+  data: {
+    name: string;
+    description?: string;
+  }
+): Promise<Technology> => {
+  const response = await fetch(`${API_URL}/technologies/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update technology');
+  }
+
+  return response.json();
+};

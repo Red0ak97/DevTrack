@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getTechnologies, deleteTechnology } from '../shared/api/technologies';
+import { getTechnologies, deleteTechnology, updateTechnology } from '../shared/api/technologies';
 import type { Technology } from '../entities/Technology';
 import { CreateTechnologyForm } from './CreateTechnologyForm';
 
@@ -7,6 +7,11 @@ export const TechnologiesList = () => {
   const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Для редактирования
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   const fetchTechnologies = async () => {
     try {
@@ -41,6 +46,44 @@ export const TechnologiesList = () => {
     setTechnologies((prev) => [...prev, newTechnology]);
   };
 
+  // Начать редактирование
+  const startEditing = (tech: Technology) => {
+    setEditingId(tech.id);
+    setEditName(tech.name);
+    setEditDescription(tech.description || '');
+  };
+
+  // Отменить редактирование
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditDescription('');
+  };
+
+  // Сохранить изменения
+  const handleUpdate = async (id: number) => {
+    if (!editName.trim()) {
+      alert('Название обязательно');
+      return;
+    }
+
+    try {
+      const updated = await updateTechnology(id, {
+        name: editName.trim(),
+        description: editDescription.trim() || undefined,
+      });
+
+      setTechnologies((prev) =>
+        prev.map((tech) => (tech.id === id ? updated : tech))
+      );
+
+      cancelEditing();
+    } catch (err) {
+      alert('Не удалось обновить технологию');
+      console.error(err);
+    }
+  };
+
   if (loading) return <div>Загрузка...</div>;
   if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
@@ -52,15 +95,43 @@ export const TechnologiesList = () => {
 
       <ul>
         {technologies.map((tech) => (
-          <li key={tech.id} style={{ marginBottom: '12px' }}>
-            <strong>{tech.name}</strong>
-            {tech.description && <p>{tech.description}</p>}
-            <button
-              onClick={() => handleDelete(tech.id)}
-              style={{ marginLeft: '10px', color: 'red' }}
-            >
-              Удалить
-            </button>
+          <li key={tech.id} style={{ marginBottom: '16px' }}>
+            {editingId === tech.id ? (
+              // Режим редактирования
+              <div>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  style={{ width: '250px', padding: '6px', marginRight: '8px' }}
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={2}
+                  style={{ width: '250px', padding: '6px', marginRight: '8px' }}
+                />
+                <button onClick={() => handleUpdate(tech.id)}>Сохранить</button>
+                <button onClick={cancelEditing} style={{ marginLeft: '8px' }}>
+                  Отмена
+                </button>
+              </div>
+            ) : (
+              // Обычный режим просмотра
+              <div>
+                <strong>{tech.name}</strong>
+                {tech.description && <p>{tech.description}</p>}
+                <button onClick={() => startEditing(tech)} style={{ marginLeft: '10px' }}>
+                  Редактировать
+                </button>
+                <button
+                  onClick={() => handleDelete(tech.id)}
+                  style={{ marginLeft: '8px', color: 'red' }}
+                >
+                  Удалить
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>
