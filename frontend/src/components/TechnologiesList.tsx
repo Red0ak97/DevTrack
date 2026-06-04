@@ -1,69 +1,57 @@
 import { useEffect, useState } from 'react';
-import { getTechnologies, deleteTechnology } from '../shared/api/technologies';
 import type { Technology } from '../entities/Technology';
 import { CreateTechnologyForm } from './CreateTechnologyForm';
 import { EditTechnologyModal } from './EditTechnologyModal';
+import { useTechnologies } from '../hooks/useTechnologies';
 
 export const TechnologiesList = () => {
-  const [technologies, setTechnologies] = useState<Technology[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { technologies, loading, error, fetchTechnologies, create, update, remove } =
+    useTechnologies();
 
-  // Состояние модалки редактирования
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTechnology, setSelectedTechnology] = useState<Technology | null>(null);
 
-  const fetchTechnologies = async () => {
-    try {
-      setLoading(true);
-      const data = await getTechnologies();
-      setTechnologies(data);
-    } catch (err) {
-      setError('Не удалось загрузить технологии');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchTechnologies();
-  }, []);
+  }, [fetchTechnologies]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить эту технологию?')) return;
 
     try {
-      await deleteTechnology(id);
-      setTechnologies((prev) => prev.filter((tech) => tech.id !== id));
+      await remove(id);
     } catch (err) {
       alert('Не удалось удалить технологию');
-      console.error(err);
     }
   };
 
-  const handleCreateSuccess = (newTechnology: Technology) => {
-    setTechnologies((prev) => [...prev, newTechnology]);
+  const handleCreateSuccess = async (data: { name: string; description?: string }) => {
+    try {
+      await create(data);
+    } catch (err) {
+      alert('Не удалось создать технологию');
+    }
   };
 
-  // Открыть модалку редактирования
   const openEditModal = (tech: Technology) => {
     setSelectedTechnology(tech);
     setIsEditModalOpen(true);
   };
 
-  // Закрыть модалку
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedTechnology(null);
   };
 
-  // После успешного обновления
-  const handleUpdateSuccess = (updatedTechnology: Technology) => {
-    setTechnologies((prev) =>
-      prev.map((tech) => (tech.id === updatedTechnology.id ? updatedTechnology : tech))
-    );
-    closeEditModal();
+  const handleUpdateSuccess = async (data: { name: string; description?: string }) => {
+    if (!selectedTechnology) return;
+
+    try {
+      await update(selectedTechnology.id, data);
+      closeEditModal();
+    } catch (err) {
+      alert('Не удалось обновить технологию');
+    }
   };
 
   if (loading) return <div>Загрузка...</div>;
@@ -93,7 +81,6 @@ export const TechnologiesList = () => {
         ))}
       </ul>
 
-      {/* Модалка редактирования */}
       <EditTechnologyModal
         technology={selectedTechnology}
         isOpen={isEditModalOpen}
