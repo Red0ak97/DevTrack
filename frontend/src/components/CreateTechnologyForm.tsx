@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { createTechnology } from '../shared/api/technologies';
-import type { Technology } from '../entities/Technology';
 
 interface CreateTechnologyFormProps {
-  onSuccess: (newTechnology: Technology) => void;
+  onSuccess: (data: { name: string; description?: string }) => Promise<void>;
 }
 
 export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) => {
@@ -12,7 +10,7 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.SyntheticEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) {
@@ -23,22 +21,31 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
     setIsLoading(true);
     setError(null);
 
-    createTechnology({
-      name: name.trim(),
-      description: description.trim() || undefined,
-    })
-      .then((newTechnology) => {
-        onSuccess(newTechnology);
-        setName('');
-        setDescription('');
-      })
-      .catch((err) => {
-        setError('Не удалось создать технологию');
-        console.error(err);
-      })
-      .finally(() => {
-        setIsLoading(false);
+    try {
+      await onSuccess({
+        name: name.trim(),
+        description: description.trim() || undefined,
       });
+
+      // Очищаем форму после успешного создания
+      setName('');
+      setDescription('');
+    } catch (err) {
+      setError('Не удалось создать технологию');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Сбрасываем ошибку при начале ввода
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    if (error) setError(null);
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDescription(e.target.value);
+    if (error) setError(null);
   };
 
   return (
@@ -50,7 +57,7 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
           type="text"
           placeholder="Название технологии"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={handleNameChange}
           disabled={isLoading}
           style={{ width: '300px', padding: '8px' }}
         />
@@ -60,7 +67,7 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
         <textarea
           placeholder="Описание (необязательно)"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={handleDescriptionChange}
           disabled={isLoading}
           rows={3}
           style={{ width: '300px', padding: '8px' }}

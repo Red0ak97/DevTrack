@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { updateTechnology } from '../shared/api/technologies';
-import type { Technology } from '../entities/Technology';
+
+interface Technology {
+  id: number;
+  name: string;
+  description?: string;
+}
 
 interface EditTechnologyModalProps {
   technology: Technology | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (updatedTechnology: Technology) => void;
+  onSuccess: (data: { name: string; description?: string }) => Promise<void>;
 }
 
 export const EditTechnologyModal = ({
@@ -20,7 +24,6 @@ export const EditTechnologyModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Заполняем форму, когда открывается модалка
   useEffect(() => {
     if (technology) {
       setName(technology.name);
@@ -43,19 +46,26 @@ export const EditTechnologyModal = ({
     setError(null);
 
     try {
-      const updated = await updateTechnology(technology.id, {
+      await onSuccess({
         name: name.trim(),
         description: description.trim() || undefined,
       });
-
-      onSuccess(updated);
       onClose();
     } catch (err) {
       setError('Не удалось обновить технологию');
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    if (error) setError(null);
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDescription(e.target.value);
+    if (error) setError(null);
   };
 
   return (
@@ -91,7 +101,7 @@ export const EditTechnologyModal = ({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={handleNameChange}
               disabled={isLoading}
               style={{ width: '100%', padding: '8px' }}
             />
@@ -101,7 +111,7 @@ export const EditTechnologyModal = ({
             <label style={{ display: 'block', marginBottom: '4px' }}>Описание</label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={handleDescriptionChange}
               disabled={isLoading}
               rows={3}
               style={{ width: '100%', padding: '8px' }}
