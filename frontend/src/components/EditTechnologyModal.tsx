@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { validateTechnology } from '../shared/utils/validation';
 
 interface Technology {
   id: number;
@@ -22,28 +23,29 @@ export const EditTechnologyModal = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const validationErrors = validateTechnology({ name, description });
 
   useEffect(() => {
     if (technology) {
       setName(technology.name);
       setDescription(technology.description || '');
-      setError(null);
+      setServerError(null);
     }
   }, [technology]);
 
   if (!isOpen || !technology) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      setError('Название обязательно');
+    if (validationErrors.name) {
       return;
     }
 
     setIsLoading(true);
-    setError(null);
+    setServerError(null);
 
     try {
       await onSuccess({
@@ -52,7 +54,7 @@ export const EditTechnologyModal = ({
       });
       onClose();
     } catch (err) {
-      setError('Не удалось обновить технологию');
+      setServerError('Не удалось обновить технологию');
     } finally {
       setIsLoading(false);
     }
@@ -60,12 +62,10 @@ export const EditTechnologyModal = ({
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
-    if (error) setError(null);
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(e.target.value);
-    if (error) setError(null);
   };
 
   return (
@@ -94,7 +94,6 @@ export const EditTechnologyModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <h3>Редактировать технологию</h3>
-
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', marginBottom: '4px' }}>Название</label>
@@ -105,6 +104,11 @@ export const EditTechnologyModal = ({
               disabled={isLoading}
               style={{ width: '100%', padding: '8px' }}
             />
+            {validationErrors.name && (
+              <p style={{ color: 'red', marginTop: '4px', marginBottom: '0' }}>
+                {validationErrors.name}
+              </p>
+            )}
           </div>
 
           <div style={{ marginBottom: '12px' }}>
@@ -116,15 +120,25 @@ export const EditTechnologyModal = ({
               rows={3}
               style={{ width: '100%', padding: '8px' }}
             />
+            {validationErrors.description && (
+              <p style={{ color: 'red', marginTop: '4px', marginBottom: '0' }}>
+                {validationErrors.description}
+              </p>
+            )}
           </div>
 
-          {error && <p style={{ color: 'red', marginBottom: '12px' }}>{error}</p>}
+          {serverError && (
+            <p style={{ color: 'red', marginBottom: '12px' }}>{serverError}</p>
+          )}
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} disabled={isLoading}>
               Отмена
             </button>
-            <button type="submit" disabled={isLoading || !name.trim()}>
+            <button
+              type="submit"
+              disabled={isLoading || !!validationErrors.name}
+            >
               {isLoading ? 'Сохранение...' : 'Сохранить'}
             </button>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { validateTechnology } from '../shared/utils/validation';
 
 interface CreateTechnologyFormProps {
   onSuccess: (data: { name: string; description?: string }) => Promise<void>;
@@ -8,44 +9,40 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null); // только для ошибок сервера
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validationErrors = validateTechnology({ name, description });
+
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      setError('Название обязательно');
-      return;
+    if (validationErrors.name) {
+      return; // не отправляем форму, если есть ошибка в названии
     }
 
     setIsLoading(true);
-    setError(null);
+    setServerError(null);
 
     try {
       await onSuccess({
         name: name.trim(),
         description: description.trim() || undefined,
       });
-
-      // Очищаем форму после успешного создания
       setName('');
       setDescription('');
     } catch (err) {
-      setError('Не удалось создать технологию');
+      setServerError('Не удалось создать технологию');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Сбрасываем ошибку при начале ввода
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
-    if (error) setError(null);
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(e.target.value);
-    if (error) setError(null);
   };
 
   return (
@@ -61,6 +58,11 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
           disabled={isLoading}
           style={{ width: '300px', padding: '8px' }}
         />
+        {validationErrors.name && (
+          <p style={{ color: 'red', marginTop: '4px', marginBottom: '0' }}>
+            {validationErrors.name}
+          </p>
+        )}
       </div>
 
       <div style={{ marginBottom: '8px' }}>
@@ -72,11 +74,21 @@ export const CreateTechnologyForm = ({ onSuccess }: CreateTechnologyFormProps) =
           rows={3}
           style={{ width: '300px', padding: '8px' }}
         />
+        {validationErrors.description && (
+          <p style={{ color: 'red', marginTop: '4px', marginBottom: '0' }}>
+            {validationErrors.description}
+          </p>
+        )}
       </div>
 
-      {error && <p style={{ color: 'red', marginBottom: '8px' }}>{error}</p>}
+      {serverError && (
+        <p style={{ color: 'red', marginBottom: '8px' }}>{serverError}</p>
+      )}
 
-      <button type="submit" disabled={isLoading || !name.trim()}>
+      <button
+        type="submit"
+        disabled={isLoading || !!validationErrors.name}
+      >
         {isLoading ? 'Добавление...' : 'Добавить технологию'}
       </button>
     </form>

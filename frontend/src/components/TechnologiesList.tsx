@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo} from 'react';
 import type { Technology } from '../entities/Technology';
 import { CreateTechnologyForm } from './CreateTechnologyForm';
 import { EditTechnologyModal } from './EditTechnologyModal';
 import { useTechnologies } from '../hooks/useTechnologies';
+import { filterTechnologies } from '../shared/utils/filterTechnologies';
 
 export const TechnologiesList = () => {
   const { technologies, loading, error, fetchTechnologies, create, update, remove } =
@@ -10,6 +11,18 @@ export const TechnologiesList = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTechnology, setSelectedTechnology] = useState<Technology | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    setDebouncedSearchTerm(searchTerm);
+  }, 300); // задержка 300 мс
+
+  return () => {
+    clearTimeout(timer); // очищаем таймер при каждом новом вводе
+  };
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchTechnologies();
@@ -54,6 +67,11 @@ export const TechnologiesList = () => {
     }
   };
 
+  const filteredTechnologies = useMemo(() => {
+  return filterTechnologies(technologies, debouncedSearchTerm);
+}, [technologies, debouncedSearchTerm]);
+
+
   if (loading) return <div>Загрузка...</div>;
   if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
@@ -63,23 +81,50 @@ export const TechnologiesList = () => {
 
       <h2>Список технологий</h2>
 
-      <ul>
-        {technologies.map((tech) => (
-          <li key={tech.id} style={{ marginBottom: '12px' }}>
-            <strong>{tech.name}</strong>
-            {tech.description && <p>{tech.description}</p>}
-            <button onClick={() => openEditModal(tech)} style={{ marginLeft: '10px' }}>
-              Редактировать
-            </button>
-            <button
-              onClick={() => handleDelete(tech.id)}
-              style={{ marginLeft: '8px', color: 'red' }}
-            >
-              Удалить
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <input
+        type="text"
+        placeholder="Поиск по названию..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ width: '300px', padding: '8px' }}
+      />
+      {searchTerm && (
+        <button
+          type="button"
+          onClick={() => setSearchTerm('')}
+          style={{ padding: '8px 12px' }}
+        >
+          Очистить
+        </button>
+      )}
+    </div>
+
+      {filteredTechnologies.length === 0 ? (
+  <p style={{ color: '#666', marginTop: '16px' }}>
+    {searchTerm.trim() 
+      ? 'Ничего не найдено по вашему запросу' 
+      : 'Список технологий пуст'}
+  </p>
+) : (
+  <ul>
+    {filteredTechnologies.map((tech) => (
+      <li key={tech.id} style={{ marginBottom: '12px' }}>
+        <strong>{tech.name}</strong>
+        {tech.description && <p>{tech.description}</p>}
+        <button onClick={() => openEditModal(tech)} style={{ marginLeft: '10px' }}>
+          Редактировать
+        </button>
+        <button
+          onClick={() => handleDelete(tech.id)}
+          style={{ marginLeft: '8px', color: 'red' }}
+        >
+          Удалить
+        </button>
+      </li>
+    ))}
+  </ul>
+)}
 
       <EditTechnologyModal
         technology={selectedTechnology}
